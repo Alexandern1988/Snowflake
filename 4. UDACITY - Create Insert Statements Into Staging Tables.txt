@@ -1,0 +1,68 @@
+// Create insert statements, make sure there are no missing data in any way
+
+INSERT INTO UDACITY.STAGING.LOG_DATA
+SELECT * FROM (
+    select t.raw:artist        ::STRING  as artist,
+           t.raw:auth          ::STRING  as auth,
+           t.raw:firstName     ::STRING  as first_name,
+           t.raw:gender        ::STRING  as gender,
+           t.raw:itemInSession ::INT     as item_in_session,
+           t.raw:lastName      ::STRING  as last_name,
+           t.raw:length        ::FLOAT   as length,
+           t.raw:level         ::STRING  as level,
+           t.raw:location      ::STRING  as location,
+           t.raw:method        ::STRING  as method,
+           t.raw:page          ::STRING  as page,
+           t.raw:registration  ::INT     as registration,
+           t.raw:sessionId     ::INT     as session_id,
+           t.raw:song          ::STRING  as song,
+           t.raw:status        ::INT     as status,
+           t.raw:ts            ::INT     as ts,
+           t.raw:userAgent     ::STRING  as user_agent,
+           try_cast(t.raw:userId::STRING as INT) as user_id
+    from udacity.staging.raw_log_data t
+    ) x
+    WHERE x.artist           IS NOT NULL AND                          
+          x.auth             IS NOT NULL AND           
+          x.first_name       IS NOT NULL AND           
+          x.gender           IS NOT NULL AND           
+          x.item_in_session  IS NOT NULL AND                
+          x.last_name        IS NOT NULL AND                                   
+          x.length           IS NOT NULL AND                            
+          x.level            IS NOT NULL AND               
+          x.location         IS NOT NULL AND                   
+          x.method           IS NOT NULL AND                   
+          x.page             IS NOT NULL AND                           
+          x.registration     IS NOT NULL AND                           
+          x.session_id       IS NOT NULL AND                   
+          x.song             IS NOT NULL AND               
+          x.status           IS NOT NULL AND                   
+          x.ts               IS NOT NULL AND               
+          x.user_agent       IS NOT NULL AND                       
+          x.user_id          IS NOT NULL;                      
+
+
+//
+INSERT INTO UDACITY.STAGING.SONG_DATA
+SELECT * FROM (
+    select t.raw:artist_id    ::STRING  as artist_id,
+       t.raw:artist_latitude  ::NUMERIC as artist_latitude,
+       t.raw:artist_location  ::STRING  as artist_location,
+       t.raw:artist_longitude ::NUMERIC as artist_longitude,
+       t.raw:artist_name      ::STRING  as artist_name,
+       t.raw:duration         ::NUMERIC as duration,
+       t.raw:num_songs        ::INT     as num_songs,
+       t.raw:song_id          ::STRING  as song_id,
+       t.raw:title            ::STRING  as title
+from udacity.staging.raw_song_data t
+) x
+WHERE x.artist_id          IS NOT NULL AND          
+      x.artist_latitude    IS NOT NULL AND                  
+      x.artist_location    IS NOT NULL AND                  
+      x.artist_longitude   IS NOT NULL AND                  
+      x.artist_name        IS NOT NULL AND              
+      x.duration           IS NOT NULL AND                  
+      x.num_songs          IS NOT NULL AND                      
+      x.song_id            IS NOT NULL AND                      
+      x.title              IS NOT NULL;          
+    

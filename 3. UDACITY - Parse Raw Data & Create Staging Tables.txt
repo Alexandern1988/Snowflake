@@ -1,0 +1,75 @@
+
+// Query the data to look at the column names and types
+select * from udacity.staging.raw_log_data;
+
+// Parse the unstructured data 
+select t.raw:artist        ::STRING  as artist,
+       t.raw:auth          ::STRING  as auth,
+       t.raw:firstName     ::STRING  as first_name,
+       t.raw:gender        ::STRING  as gender,
+       t.raw:itemInSession ::INT     as item_in_session,
+       t.raw:lastName      ::STRING  as last_name,
+       t.raw:length        ::NUMERIC as length,
+       t.raw:level         ::STRING  as level,
+       t.raw:location      ::STRING  as location,
+       t.raw:method        ::STRING  as method,
+       t.raw:page          ::STRING  as page,
+       t.raw:registration  ::INT     as registration,
+       t.raw:sessionId     ::INT     as session_id,
+       t.raw:song          ::STRING  as song,
+       t.raw:status        ::INT     as status,
+       t.raw:ts            ::INT     as ts,
+       t.raw:userAgent     ::STRING  as user_agent,
+       t.raw:userId        ::STRING  as user_id
+from udacity.staging.raw_log_data t;
+
+//
+select * from udacity.staging.raw_song_data;
+
+select t.raw:artist_id        ::STRING  as artist_id,
+       t.raw:artist_latitude  ::NUMERIC as artist_latitude,
+       t.raw:artist_location  ::STRING  as artist_location,
+       t.raw:artist_longitude ::NUMERIC as artist_longitude,
+       t.raw:artist_name      ::STRING  as artist_name,
+       t.raw:duration         ::NUMERIC as duration,
+       t.raw:num_songs        ::INT     as num_songs,
+       t.raw:song_id          ::STRING  as song_id,
+       t.raw:title            ::STRING  as title
+from udacity.staging.raw_song_data t;
+
+---------------------------------------------------------------------
+
+// Create staging tables to hold the pasred data
+CREATE OR REPLACE TABLE UDACITY.STAGING.LOG_DATA(
+    artist STRING, 
+    auth STRING, 
+    firstName STRING, 
+    gender STRING, 
+    itemInSession INT,    
+    lastName STRING, 
+    length NUMERIC,
+    level STRING,
+    location STRING, 
+    method STRING,
+    page STRING,
+    registration INT,    
+    sessionId INT,    
+    song STRING, 
+    status INT,    
+    ts INT,   
+    userAgent STRING, 
+    userId STRING
+);
+
+//
+CREATE OR REPLACE TABLE UDACITY.STAGING.SONG_DATA (
+    artist_id STRING,
+    artist_latitude NUMERIC, 
+    artist_location STRING,
+    artist_longitude NUMERIC, 
+    artist_name STRING,
+    duration NUMERIC,
+    num_songs INT,   
+    song_id STRING,
+    title STRING
+);
