@@ -1,0 +1,85 @@
+
+// Copy log data from s3 into raw json table
+CREATE OR REPLACE TABLE UDACITY.STAGING.RAW_LOG_DATA (
+    raw variant
+);
+
+// Copy song data from s3 into raw json table
+CREATE OR REPLACE TABLE UDACITY.STAGING.RAW_SONG_DATA (
+    raw variant
+);
+
+---------------------------------------------------------------------
+
+// Truncate tables after testing the copy command
+TRUNCATE TABLE UDACITY.STAGING.RAW_LOG_DATA;
+TRUNCATE TABLE UDACITY.STAGING.RAW_SONG_DATA;
+
+// Define pipe from log data
+CREATE OR REPLACE PIPE UDACITY.STAGING.LOG_DATA_PIPE
+AUTO_INGEST = TRUE
+AS
+COPY INTO UDACITY.STAGING.RAW_LOG_DATA
+FROM @UDACITY.STAGING.AWS_STAGE_LOG_DATA;
+
+// Get notification channel id string
+DESC PIPE UDACITY.STAGING.LOG_DATA_PIPE;
+
+// Refresh pipe to make sure files are sent
+ALTER PIPE UDACITY.STAGING.LOG_DATA_PIPE REFRESH;
+
+// Make sure pipe status is running
+SELECT SYSTEM$PIPE_STATUS('LOG_DATA_PIPE');
+
+// Make sure there are no errors loading files
+SELECT * FROM TABLE (VALIDATE_PIPE_LOAD(
+    PIPE_NAME => 'UDACITY.STAGING.LOG_DATA_PIPE',
+    START_TIME => dateadd(hour, -2, current_timestamp())
+    )
+);
+
+// Get last load time for the sent files and compare it to current timestamp
+SELECT * FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'UDACITY.STAGING.RAW_LOG_DATA',
+    START_TIME => dateadd(hour, -2, current_timestamp())
+    )
+);
+-- 2022-11-05T09:27:09.194-07:00
+
+SELECT current_timestamp();
+
+select * from UDACITY.STAGING.RAW_LOG_DATA;
+
+
+// Define pipe for song data
+CREATE OR REPLACE PIPE UDACITY.STAGING.SONG_DATA_PIPE
+AUTO_INGEST = TRUE
+AS
+COPY INTO UDACITY.STAGING.RAW_SONG_DATA
+FROM @UDACITY.STAGING.AWS_STAGE_SONG_DATA;
+
+DESC PIPE UDACITY.STAGING.SONG_DATA_PIPE;
+
+ALTER PIPE UDACITY.STAGING.SONG_DATA_PIPE REFRESH;
+
+SELECT SYSTEM$PIPE_STATUS('SONG_DATA_PIPE');
+
+SELECT * FROM TABLE (VALIDATE_PIPE_LOAD(
+    PIPE_NAME => 'UDACITY.STAGING.SONG_DATA_PIPE',
+    START_TIME => dateadd(hour, -2, current_timestamp())
+    )
+);
+
+SELECT * FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'UDACITY.STAGING.RAW_SONG_DATA',
+    START_TIME => dateadd(hour, -2, current_timestamp())
+    )
+);
+-- 2022-11-05T09:27:09.194-07:00
+
+SELECT current_timestamp();
+
+select * from udacity.staging.raw_song_data;
+
+// Show existing pipes
+SHOW PIPES;
