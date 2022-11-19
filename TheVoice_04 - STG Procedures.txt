@@ -1,0 +1,345 @@
+// STG DimCallType
+CREATE OR REPLACE TABLE THEVOICE.STG.DimCallType (
+     KeyCallType               INT 
+    ,DescCallTypeCode          VARCHAR(100)
+    ,DescCallType              VARCHAR(100)
+    ,DescFullCallType          VARCHAR(100)
+    ,DescCallTypePriceCategory VARCHAR(100)
+    ,DescCallTypeCategory      VARCHAR(100)
+);
+
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DimCallType()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    DECLARE price_per_minute_var NUMERIC DEFAULT 0.5;
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DimCallType;
+
+        INSERT INTO DimCallType
+        SELECT ROW_NUMBER() OVER (ORDER BY C.CALL_TYPE_CODE) AS KeyCallType,
+               C.CALL_TYPE_CODE                              AS DescCallTypeCode,
+               C.CALL_TYPE_DESC                              AS DescCallType,
+               CONCAT(C.CALL_TYPE_CODE, C.CALL_TYPE_DESC)    AS DescFullCallType,
+               CASE WHEN C.PRICE_PER_MINUNTE <= :price_per_minute_var THEN 'Discounted Price'
+                    ELSE 'Normal Price' END                  AS DescCallTypePriceCategory,
+               C.CALL_TYPE AS DescCallTypeCategory
+        FROM THEVOICE.MRR.CALL_TYPE c;
+        RETURN 'STG DimCallType SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG DimCountries
+CREATE OR REPLACE TABLE THEVOICE.STG.DimCountries (
+     KeyCountry  INT 
+    ,DescCountry VARCHAR(100)
+    ,DescRegion	 VARCHAR(100)
+    ,DescArea    VARCHAR(100)
+);
+
+ 
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DimCountries()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DimCountries;
+
+        INSERT INTO THEVOICE.STG.DimCountries
+        SELECT X.COUNTRY_PRE AS KeyCountry,
+               X.COUNTRY_PRE AS DescCountry,
+               C.REGION      AS DescRegion,
+               C.AREA        AS DescArea
+        FROM THEVOICE.MRR.XX_COUNTRY_TYPE X JOIN THEVOICE.MRR.COUNTRIES C
+             ON X.COUNTRY_CODE = C.COUNTRY_CODE;
+        RETURN 'STG DimCountries SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG DimPackageCatalog
+CREATE OR REPLACE TABLE THEVOICE.STG.DimPackageCatalog (
+     KeyPackage	               INT 
+    ,DescPackage               VARCHAR(120)
+    ,DatePackageCreation       DATE
+    ,DatePackageEnd	           DATE
+    ,DescPackageStatus         VARCHAR(100)
+    ,CodePackageActivitiesDays INT
+);
+
+
+
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DimPackageCatalog()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DimPackageCatalog;
+
+        INSERT INTO THEVOICE.STG.DimPackageCatalog
+        SELECT P.PACKAGE_NUM            AS KeyPackage,
+               P.PACK_DESC              AS DescPackage,
+               P.CREATE_DATE            AS DatePackageCreation,
+               P.END_DATE               AS DatePackageEnd,
+               CASE WHEN P.STATUS = 1 THEN 'Active'
+                    ELSE 'Inactive' END AS DescPackageStatus,
+               DATEDIFF(DAY, P.CREATE_DATE, P.END_DATE) AS CodePackageActivitiesDays
+        FROM THEVOICE.MRR.PACKAGE_CATALOG P;
+        
+        RETURN 'STG DimPackageCatalog SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG DimOperators
+CREATE OR REPLACE TABLE THEVOICE.STG.DimOperators (
+     KeyOperator	INT 
+    ,DescOperator   VARCHAR(50)
+    ,DescKeyPrefix  VARCHAR(3)
+);
+
+
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DimOperators()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DimOperators;
+
+        INSERT INTO THEVOICE.STG.DimOperators
+        SELECT F.OPCCC                        AS KeyOperator,
+               CONCAT(F.PREPRE, '_', F.OPDDD) AS DescOperator,
+               F.PREPRE                       AS DescKeyPrefix
+        FROM THEVOICE.MRR.PFILEOPP F;
+        RETURN 'STG DimOperators SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG CUSTOMERS
+CREATE OR REPLACE TABLE THEVOICE.STG.DimCustomers(
+    KeyCustomer              INT,
+    OperatorCode             INT,
+    CountryCode              INT,
+    DescCustomerLineOperator VARCHAR(50),
+    DescCustomerLineCountry  VARCHAR(100),
+    DescCustomerName         VARCHAR(100),
+    DescCustomerAddress      VARCHAR(100),
+    DescCusomterPackage      VARCHAR(100)
+);
+                                  
+                                                  
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DimCustomers()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DimCustomers;
+        
+        INSERT INTO THEVOICE.STG.DimCustomers
+        SELECT C.CUSTOMER_ID                                                                                  AS KeyCustomer,
+               CASE WHEN LEN(L.PHONE_NO) = 12 THEN substr(L.PHONE_NO, 4, 2) ELSE substr(L.PHONE_NO, 2, 3) END AS OperatorCode,
+               CASE WHEN LEN(L.PHONE_NO) = 12 THEN substr(L.PHONE_NO, 1, 3) ELSE substr(L.PHONE_NO, 1, 1) END AS CountryCode,
+               CASE WHEN P.OPDDD IS NULL THEN 'Unknown' ELSE P.OPDDD                                      END AS DescCustomerLineOperator,
+               CASE WHEN X.COUNTRY_CODE IS NULL THEN 'Unknown' ELSE X.COUNTRY_CODE                        END AS DescCustomerLineCountry,
+               C.CUST_NAME                                                                                    AS DescCustomerName,
+               C.ADDRESS                                                                                      AS DescCustomerAddress,
+               L.DESC                                                                                         AS DescCusomterPackage
+        FROM THEVOICE.MRR.CUSTOMER_LINES L JOIN THEVOICE.MRR.CUSTOMER C 
+                ON L.PHONE_NO = C.CUST_NUMBER
+             LEFT JOIN THEVOICE.MRR.PFILEOPP AS P 
+                ON (CASE WHEN LEN(L.PHONE_NO) = 12 THEN substr(L.PHONE_NO, 4, 2) ELSE substr(L.PHONE_NO, 2, 3) END) = P.OPCCC
+             LEFT JOIN THEVOICE.MRR.XX_COUNTRY_TYPE X
+                ON (CASE WHEN LEN(L.PHONE_NO) = 12 THEN substr(L.PHONE_NO, 1, 3) ELSE substr(L.PHONE_NO, 1, 1) END) = X.COUNTRY_PRE;
+        
+        RETURN 'STG DimCustomers SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG DimCallOriginType
+CREATE OR REPLACE TABLE THEVOICE.STG.DimCallOriginType(
+    KeyCallOriginType  INT,
+    DescCallOriginType VARCHAR(50)
+);
+
+
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DimCallOriginType()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DimCallOriginType;
+
+        INSERT INTO THEVOICE.STG.DimCallOriginType
+        SELECT U.CELL_ORIGIN                 AS KeyCallOriginType,
+           CASE WHEN U.CELL_ORIGIN = 1 THEN 'Cellular Call'
+                WHEN U.CELL_ORIGIN = 0 THEN 'Line Call'
+                ELSE 'Unknown' END           AS DescCallOriginType
+        FROM THEVOICE.MRR.USAGE_MAIN U;
+        
+        RETURN 'STG DimCallOriginType SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG DIM_DATE
+CREATE OR REPLACE TABLE THEVOICE.STG.DimDate(
+     FullDate       DATETIME
+     ,KeyDate       INT
+     ,KeyMonth      INT
+     ,CodeYear      INT
+     ,CodeQuarter   INT
+     ,CodeMonth     INT
+     ,DescMonth     VARCHAR(10)
+     ,CodeDayInWeek INT
+     ,DescDayInWeek VARCHAR(10)
+);
+
+
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_DIM_DATE()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.DIM_DATE;
+        
+        INSERT INTO THEVOICE.STG.DIM_DATE
+        SELECT D.FULLDATE,
+               D.KEYDATE,
+               D.KEYMONTH,
+               D.CODEYEAR,
+               D.CODEQUARTER,
+               D.CODEMONTH,
+               D.DESCMONTH,
+               D.CODEDAYINWEEK,
+               D.DESCDAYINWEEK
+        FROM THEVOICE.MRR.DIM_DATE D;
+        
+        RETURN 'STG DimDate SUCCESSFULLY LOADED';
+    END;
+$$;
+
+
+// STG FACT_USAGE
+CREATE OR REPLACE TABLE THEVOICE.STG.FACT_USAGE(
+     CallId	                 INT 
+    ,KeyCustomer             INT
+    ,KeyCallType             INT
+    ,KeyOriginCountry        INT
+    ,KeyDestinationCountry   INT
+    ,KeyOriginOperator       INT
+    ,KeyDestinationOperator  INT
+    ,DescDestinationCountry  VARCHAR(100)
+    ,DescDestinationOperator VARCHAR(100)
+    ,KeyPackage	             INT
+    ,KeyCallOriginType       INT
+    ,KeyCallDate             INT
+    ,Duration                INT
+    ,BillableDuration        INT
+    ,Amount	                 FLOAT
+    ,BillableAmount	         FLOAT
+
+);
+
+
+ CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_FACT_USAGE()
+ RETURNS VARCHAR
+ LANGUAGE SQL
+ AS
+ $$
+    BEGIN
+        TRUNCATE TABLE THEVOICE.STG.FACT_USAGE;
+        
+        INSERT INTO THEVOICE.STG.FACT_USAGE
+        SELECT  X.CallId ,X.KeyCustomer ,X.KeyCallType ,X.KeyOriginCountry ,X.KeyDestinationCountry  ,X.KeyOriginOperator  ,X.KeyDestinationOperator ,X.DescDestinationCountry     
+                 ,X.DescDestinationOperator ,X.KeyPackage	 ,X.KeyCallOriginType ,X.KeyCallDate ,X.Duration ,X.BillableDuration ,X.Amount  ,X.BillableAmount	 
+        FROM (
+            SELECT U.CALL_NO                                                                     AS CallId,
+                   C.CUSTOMER_ID                                                                 AS KeyCustomer,
+                   T.KEYCALLTYPE,
+                   CASE WHEN CT.COUNTRY_PRE    IS NULL THEN -1         ELSE CT.COUNTRY_PRE   END AS KeyOriginCountry,
+                   CASE WHEN CT.COUNTRY_CODE   IS NULL THEN 'Unknown'  ELSE CT.COUNTRY_CODE  END AS DescOriginCountry,
+                   CASE WHEN P.OPCCC           IS NULL THEN -1         ELSE P.OPCCC          END AS KeyOriginOperator,   
+                   CASE WHEN P.OPDDD           IS NULL THEN 'Unknown'  ELSE P.OPDDD          END AS DescOriginOperator,
+                   CASE WHEN CT2.COUNTRY_PRE   IS NULL THEN -1         ELSE CT2.COUNTRY_PRE  END AS KeyDestinationCountry,
+                   CASE WHEN CT2.COUNTRY_CODE  IS NULL THEN 'Unknown'  ELSE CT2.COUNTRY_CODE END AS DescDestinationCountry,
+                   CASE WHEN P2.OPCCC          IS NULL THEN -1         ELSE P2.OPCCC         END AS KeyDestinationOperator, 
+                   CASE WHEN P2.OPDDD          IS NULL THEN 'Unknown'  ELSE P2.OPDDD         END AS DescDestinationOperator,
+                   PC.PACKAGE_NUM                                                                AS KeyPackage,
+                   U.CELL_ORIGIN                                                                 AS KeyCallOriginType,
+                   CONCAT(LEFT(U.CALL_DATETIME::DATE::STRING, 4), substr(U.CALL_DATETIME::DATE::STRING, 6, 2), RIGHT(U.CALL_DATETIME::DATE::STRING, 2))::INT AS KeyCallDate,
+                   U.DURATION                                                                    AS Duration,
+                   U.DURATION - CL.NUMBER_OF_FREE_MINUTES                                        AS BillableDuration,
+                   U.RATED_AMNT                                                                  AS Amount,
+                   CASE WHEN U.RATED_AMNT * CL.DISCOUNT_PCT = 0 OR U.RATED_AMNT * CL.DISCOUNT_PCT IS NULL THEN U.RATED_AMNT
+                        ELSE U.RATED_AMNT * CL.DISCOUNT_PCT                                  END AS BillableAmount
+            FROM THEVOICE.MRR.USAGE_MAIN U JOIN THEVOICE.MRR.CUSTOMER C
+                    ON U.CALL_NO = C.CUSTOMER_ID
+                 JOIN THEVOICE.STG.DIMCALLTYPE T ON U.CALL_TYPE = T.DESCCALLTYPECODE
+                 // Get origin country description
+                 LEFT JOIN THEVOICE.MRR.XX_COUNTRY_TYPE AS CT
+                    ON (CASE WHEN LEN(U.CALLING_NO) = 12 THEN substr(U.CALLING_NO, 1, 3) ELSE substr(U.CALLING_NO, 1, 1) END) = CT.COUNTRY_PRE
+                 // Get origin operator description
+                 LEFT JOIN THEVOICE.MRR.PFILEOPP AS P
+                    ON (CASE WHEN LEN(U.CALLING_NO) = 12 THEN substr(U.CALLING_NO, 4, 2) ELSE substr(U.CALLING_NO, 2, 3) END) = P.OPCCC
+                 // Get destination country description   
+                 LEFT JOIN THEVOICE.MRR.XX_COUNTRY_TYPE AS CT2
+                    ON (CASE WHEN LEN(U.CALLING_NO) = 12 THEN substr(U.DES_NO, 1, 3) ELSE substr(U.DES_NO, 1, 1) END) = CT2.COUNTRY_PRE
+                 // Get destination operator description
+                 LEFT JOIN THEVOICE.MRR.PFILEOPP AS P2
+                    ON (CASE WHEN LEN(U.DES_NO) = 12 THEN substr(U.DES_NO, 4, 2) ELSE substr(U.DES_NO, 2, 3) END) = P2.OPCCC  
+                 // Get package number
+                 JOIN THEVOICE.MRR.CUSTOMER_LINES CL  ON U.CALLING_NO = CL.PHONE_NO
+                 JOIN THEVOICE.MRR.PACKAGE_CATALOG PC ON CL.TYPE = PC.PACK_TYPE
+                ) X;
+        
+        RETURN 'STG FACT_USAGE LOADED SUCCESSFULLY';
+    END;
+ $$;
+
+
+
+SELECT MAX(U.CALL_DATETIME), MIN(U.CALL_DATETIME)
+FROM THEVOICE.MRR.USAGE_MAIN U;
+
+
+
+
+// RUN STG PRCEDURES
+CREATE OR REPLACE PROCEDURE THEVOICE.STG.SP_RUN_STG()
+RETURNS VARCHAR
+LANGUAGE SQL
+AS
+$$
+    BEGIN
+        CALL THEVOICE.STG.SP_DIMCALLTYPE();
+        CALL THEVOICE.STG.SP_DIMCOUNTRIES();
+        CALL THEVOICE.STG.SP_DIMPACKAGECATALOG();
+        CALL THEVOICE.STG.SP_DIMOPERATORS();
+        CALL THEVOICE.STG.SP_DIMCUSTOMERS();
+        CALL THEVOICE.STG.SP_DIMCALLORIGINTYPE();
+        CALL THEVOICE.STG.SP_DIM_DATE();
+        CALL THEVOICE.STG.SP_FACT_USAGE();
+        RETURN 'STG TABLES LOADED';
+    END;
+$$;
+
+
+
+
+
+
+
+
+
+
+
