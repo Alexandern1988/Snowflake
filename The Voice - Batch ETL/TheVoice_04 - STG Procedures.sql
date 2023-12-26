@@ -332,7 +332,7 @@ $$
         RETURN 'STG TABLES LOADED';
     END;
 $$;
-
+    
 
 
 

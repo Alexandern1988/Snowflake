@@ -367,3 +367,4 @@ $$
         RETURN 'MRR TABLES LOADED';
     END;
 $$;
+   

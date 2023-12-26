@@ -50,3 +50,4 @@ SELECT * FROM @UDACITY.STAGING.aws_stage_song_data (file_format => UDACITY.STAGI
 
 // Show all existing stages
 SHOW STAGES;
+    
